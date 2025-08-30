@@ -80,7 +80,7 @@ https://your-worker-name.workers.dev/discord
 
 ## コマンド
 
-- `/chat [メッセージ]` - ゴリ本部長と会話
+- `/gori [メッセージ]` - ゴリ本部長と会話
 - `/memo [内容]` - メモを保存
 - `/list` - メモ一覧表示
 - `/delete [ID]` - メモ削除

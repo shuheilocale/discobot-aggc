@@ -65,7 +65,7 @@ npx wrangler secret put GEMINI_API_KEY
 
 #### worker/index.js
 - Discord Webhook処理
-- Slash Commands実装 (`/chat`, `/memo`, `/list`, `/delete`)
+- Slash Commands実装 (`/gori`, `/memo`, `/list`, `/delete`)
 - メッセージ履歴取得（Discord API）
 - ニックネーム対応
 - Gemini API連携

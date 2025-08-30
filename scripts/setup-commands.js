@@ -16,6 +16,18 @@ async function registerCommands() {
   
   const commands = [
     {
+      name: 'gori',
+      description: 'ゴリ本部長と話す',
+      options: [
+        {
+          type: 3, // STRING
+          name: 'message',
+          description: 'ゴリ本部長に言いたいこと',
+          required: true,
+        }
+      ]
+    },
+    {
       name: 'memo',
       description: 'メモを保存します',
       options: [
@@ -39,18 +51,6 @@ async function registerCommands() {
           type: 4, // INTEGER
           name: 'id',
           description: '削除するメモのID',
-          required: true,
-        }
-      ]
-    },
-    {
-      name: 'chat',
-      description: 'AIと会話します',
-      options: [
-        {
-          type: 3, // STRING
-          name: 'message',
-          description: 'AIに送るメッセージ',
           required: true,
         }
       ]

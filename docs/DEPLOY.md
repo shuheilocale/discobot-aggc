@@ -161,7 +161,7 @@ node scripts/setup-commands.js
 ```
 
 成功すると、以下のコマンドが登録されます：
-- `/chat [メッセージ]` - ゴリ本部長と会話
+- `/gori [メッセージ]` - ゴリ本部長と会話
 - `/memo [内容]` - メモを保存
 - `/list` - メモ一覧表示
 - `/delete [ID]` - メモ削除
@@ -194,12 +194,7 @@ Discordサーバーで以下を試す：
 
 1. **Slashコマンドテスト**
    ```
-   /chat こんにちは
-   ```
-
-2. **メンション応答テスト**
-   ```
-   @ゴリ本部長 どう思う？
+   /gori こんにちは
    ```
 
 3. **メモ機能テスト**
@@ -282,6 +277,7 @@ npx wrangler secret put DISCORD_PUBLIC_KEY
    node scripts/setup-commands.js
    ```
 2. Bot権限確認（Use Slash Commandsが必要）
+3. Discordを再起動してコマンドを更新
 
 ## セキュリティ注意事項
 

@@ -113,13 +113,10 @@ async function handleCommand(interaction, env) {
         return handleListCommand(userId, env);
       case 'delete':
         return handleDeleteCommand(data.options, userId, env);
-      case 'chat':
-        return handleChatCommand(data.options, interaction, env);
+      case 'gori':
+      case 'ゴリ':
+        return handleGoriCommand(data.options, interaction, env);
       default:
-        // メンション対応のため、通常のメッセージとして処理
-        if (interaction.data?.resolved?.messages) {
-          return handleMentionChat(interaction, env);
-        }
         return createResponse('不明なコマンドです。');
     }
   } catch (error) {
@@ -132,7 +129,7 @@ async function handleMemoCommand(options, userId, env) {
   const content = options?.find(opt => opt.name === 'content')?.value;
   
   if (!content) {
-    return createResponse('メモする内容を指定してください。');
+    return createResponse('なんか書けや。知らんけど。');
   }
   
   try {
@@ -140,10 +137,10 @@ async function handleMemoCommand(options, userId, env) {
       'INSERT INTO memos (user_id, content) VALUES (?, ?)'
     ).bind(userId, content).run();
     
-    return createResponse(`✅ メモを保存しました: ${content}`);
+    return createResponse(`はいはい、メモっといたけんね。「${content}」って。\nまぁ後で見るかどうかは知らんけど。じゃ、俺帰るけん。`);
   } catch (error) {
     console.error('Error saving memo:', error);
-    return createResponse('メモの保存に失敗しました。');
+    return createResponse('あー面倒くせぇ。メモ保存できんかったわ。もう一回やり直して。俺は知らんけんね。');
   }
 }
 
@@ -154,17 +151,17 @@ async function handleListCommand(userId, env) {
     ).bind(userId).all();
     
     if (results.length === 0) {
-      return createResponse('メモがありません。');
+      return createResponse('メモなんか一個もないやん。なんも書いとらんのに見るもんないやろ。知らんけど。');
     }
     
     const memoList = results.map((memo, index) => 
       `${index + 1}. [ID:${memo.id}] ${memo.content}`
     ).join('\n');
     
-    return createResponse(`📝 あなたのメモ一覧:\n\n${memoList}`);
+    return createResponse(`あー面倒くせぇけど、一応メモ見せたるわ。\n\n${memoList}\n\nほら、これでいい？俺もう帰るけん。あとよろしくぅ。`);
   } catch (error) {
     console.error('Error listing memos:', error);
-    return createResponse('メモの取得に失敗しました。');
+    return createResponse('メモ見ようとしたけど、なんかエラー出たわ。俺管理せんけん。もう一回やって。');
   }
 }
 
@@ -172,7 +169,7 @@ async function handleDeleteCommand(options, userId, env) {
   const memoId = options?.find(opt => opt.name === 'id')?.value;
   
   if (!memoId) {
-    return createResponse('削除するメモのIDを指定してください。');
+    return createResponse('ID書けや。何消したいんか分からんやろ。ふぇっふぁっふぁぇっ。');
   }
   
   try {
@@ -181,17 +178,17 @@ async function handleDeleteCommand(options, userId, env) {
     ).bind(memoId, userId).run();
     
     if (result.meta.changes === 0) {
-      return createResponse('指定されたメモが見つかりません。');
+      return createResponse(`ID:${memoId}？そんなメモないけど。俺そんなこと言ったっけ。知らんけんね。`);
     }
     
-    return createResponse(`✅ メモを削除しました (ID: ${memoId})`);
+    return createResponse(`はいはい、ID:${memoId}のメモ消しといたけん。\nまぁ消したところで俺は困らんけど。じゃ、先帰るけん。`);
   } catch (error) {
     console.error('Error deleting memo:', error);
-    return createResponse('メモの削除に失敗しました。');
+    return createResponse('削除しようとしたけど失敗したわ。俺のせいじゃないけんね。しゃーしー。');
   }
 }
 
-async function handleMessageComponent(interaction, env) {
+async function handleMessageComponent() {
   // Handle button clicks and select menu interactions
   return createResponse('コンポーネントのインタラクションを受け取りました。');
 }
@@ -208,12 +205,12 @@ function createResponse(content, ephemeral = false) {
   });
 }
 
-// Chat command handler
-async function handleChatCommand(options, interaction, env) {
+// ゴリ本部長との会話を処理
+async function handleGoriCommand(options, interaction, env) {
   const message = options?.find(opt => opt.name === 'message')?.value;
   
   if (!message) {
-    return createResponse('メッセージを入力してください。');
+    return createResponse('なんか言えや。知らんけど。');
   }
   
   // チャンネルIDとギルドIDを取得
@@ -231,23 +228,6 @@ async function handleChatCommand(options, interaction, env) {
   const aiResponse = await generateAIResponse(contextPrompt, env);
   
   return createResponse(aiResponse);
-}
-
-// Handle mention-based chat
-async function handleMentionChat(interaction, env) {
-  try {
-    const message = interaction.data?.options?.[0]?.value || '';
-    
-    if (!message) {
-      return createResponse('何かお話しください！');
-    }
-    
-    const aiResponse = await generateAIResponse(message, env);
-    return createResponse(aiResponse);
-  } catch (error) {
-    console.error('Error in mention chat:', error);
-    return createResponse('申し訳ありません、応答の生成に失敗しました。');
-  }
 }
 
 // Discord APIから直近のメッセージを取得（ニックネーム対応）
