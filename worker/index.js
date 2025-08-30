@@ -289,7 +289,9 @@ async function sendFollowupMessage(applicationId, interactionToken, content, env
 // Discord APIから直近のメッセージを取得（ニックネーム対応）
 async function fetchRecentMessages(channelId, guildId, env) {
   try {
-    console.log('Fetching messages from channel:', channelId);
+    console.log('=== Fetching message history ===');
+    console.log('Channel ID:', channelId);
+    console.log('Guild ID:', guildId);
 
     const response = await fetch(
       `https://discord.com/api/v10/channels/${channelId}/messages?limit=10`,
@@ -308,7 +310,14 @@ async function fetchRecentMessages(channelId, guildId, env) {
     }
 
     const messages = await response.json();
-    console.log('Fetched messages count:', messages.length);
+    console.log(`Successfully fetched ${messages.length} messages from Discord`);
+    
+    // メッセージ内容をログ出力
+    messages.forEach((msg, index) => {
+      const author = msg.author?.username || 'Unknown';
+      const content = msg.content?.substring(0, 100) || 'No content';
+      console.log(`Message ${index + 1}: [${author}] ${content}`);
+    });
 
     // ギルドメンバー情報を取得してニックネームを追加
     if (guildId) {
@@ -321,7 +330,9 @@ async function fetchRecentMessages(channelId, guildId, env) {
     }
 
     // 古い順に並び替え
-    return messages.reverse();
+    const sortedMessages = messages.reverse();
+    console.log('Messages sorted in chronological order (oldest first)');
+    return sortedMessages;
   } catch (error) {
     console.error('Error fetching messages:', error);
     return [];
@@ -363,6 +374,8 @@ async function buildContextPrompt(messageHistory, currentMessage, currentUserNic
     return `${systemPrompt}\n\n${currentUserNickname}: ${currentMessage}\n\nAssistant:`;
   }
 
+  console.log(`Building context with ${messageHistory.length} messages from history`);
+  
   let context = `${systemPrompt}\n\n以下は最近の会話履歴です：\n\n`;
 
   for (const msg of messageHistory) {
@@ -373,12 +386,14 @@ async function buildContextPrompt(messageHistory, currentMessage, currentUserNic
 
     if (content) {
       context += `${author}: ${content}\n`;
+      console.log(`Added to context - ${author}: ${content.substring(0, 50)}...`);
     }
   }
 
   context += `\n${currentUserNickname}: ${currentMessage}\n\nAssistant:`;
 
-  console.log('Built context with nicknames, system prompt and history');
+  console.log(`Built context with ${messageHistory.length} historical messages, total length: ${context.length} chars`);
+  console.log('First 500 chars of context:', context.substring(0, 500));
 
   return context;
 }
