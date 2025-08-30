@@ -371,17 +371,18 @@ async function buildContextPrompt(messageHistory, currentMessage, currentUserNic
 
   if (!messageHistory || messageHistory.length === 0) {
     console.log('No message history available');
-    return `${systemPrompt}\n\n${currentUserNickname}: ${currentMessage}\n\nAssistant:`;
+    return `${systemPrompt}\n\n【現在の会話】\n${currentUserNickname}: ${currentMessage}\n\nゴリ本部長の返答:`;
   }
 
   console.log(`Building context with ${messageHistory.length} messages from history`);
   
-  let context = `${systemPrompt}\n\n以下は最近の会話履歴です：\n\n`;
+  let context = `${systemPrompt}\n\n【直近の会話履歴（古い順）】\n`;
+  context += '================================\n';
 
   for (const msg of messageHistory) {
     // Botのメッセージかユーザーのメッセージか判定
     // ニックネームがあればそれを使用、なければユーザー名を使用
-    const author = msg.author?.bot ? 'Assistant' : (msg.author?.nickname || msg.author?.username || 'User');
+    const author = msg.author?.bot ? 'ゴリ本部長' : (msg.author?.nickname || msg.author?.username || 'User');
     const content = msg.content;
 
     if (content) {
@@ -390,7 +391,8 @@ async function buildContextPrompt(messageHistory, currentMessage, currentUserNic
     }
   }
 
-  context += `\n${currentUserNickname}: ${currentMessage}\n\nAssistant:`;
+  context += '================================\n\n';
+  context += `【現在の会話】\n${currentUserNickname}: ${currentMessage}\n\nゴリ本部長の返答:`;
 
   console.log(`Built context with ${messageHistory.length} historical messages, total length: ${context.length} chars`);
   console.log('First 500 chars of context:', context.substring(0, 500));
