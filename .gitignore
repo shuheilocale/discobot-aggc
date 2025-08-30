@@ -43,7 +43,6 @@ logs/
 # Cloudflare Workers
 .wrangler/
 dist/
-worker/
 
 # uv
 .python-version

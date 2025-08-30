@@ -4,75 +4,123 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-Discord botプロジェクト。メンションされた際に過去の投稿を参照してGemini APIを使用して返答を生成し、メモ機能も提供する。
+Discord Bot with Cloudflare Workers - ゴリ本部長として振る舞うAIチャットボット
 
-## 開発環境
+## ディレクトリ構成
 
-- Python 3.12+
-- パッケージマネージャー: uv
-- 主要依存関係:
-  - discord.py: Discord bot フレームワーク
-  - google-generativeai: Gemini API クライアント
-  - python-dotenv: 環境変数管理
+```
+discobot-aggt/
+├── worker/                 # Cloudflare Worker (JavaScript)
+│   ├── index.js           # メインロジック
+│   └── system-prompt.js   # システムプロンプト設定
+├── config/                # 設定ファイル
+│   ├── system-prompt.txt  # ゴリ本部長のキャラクター設定
+│   └── schema.sql         # D1データベーススキーマ
+├── scripts/               # ユーティリティスクリプト
+│   └── setup-commands.js  # Discord Slashコマンド登録
+├── docs/                  # ドキュメント
+│   ├── customize-bot.md   # カスタマイズ方法
+│   ├── local-dev.md       # ローカル開発ガイド
+│   └── ...
+├── .env                   # 環境変数（Git除外）
+├── .env.example          # 環境変数テンプレート
+├── wrangler.toml         # Cloudflare Workers設定
+└── package.json          # Node.js依存関係
+```
 
 ## 開発コマンド
 
 ```bash
-# 仮想環境のアクティベート
-source .venv/bin/activate
+# ローカル開発サーバー起動
+npx wrangler dev --remote
 
-# 依存関係のインストール
-uv sync
+# Cloudflare Workersへデプロイ
+npx wrangler deploy
 
-# 新しい依存関係の追加
-uv add <package-name>
+# ログ確認
+npx wrangler tail
 
-# ボットの実行
-uv run python main.py
+# D1データベース操作
+npx wrangler d1 execute discobot-memos --file=config/schema.sql --remote
 
-# Cloudflare Workersへのデプロイ
-wrangler deploy
+# Discord Slashコマンド登録
+node scripts/setup-commands.js
 
-# Cloudflare Workersのログ確認
-wrangler tail
-
-# シークレットの設定
-wrangler secret put DISCORD_BOT_TOKEN
-wrangler secret put GEMINI_API_KEY
+# シークレット設定
+npx wrangler secret put DISCORD_APPLICATION_ID
+npx wrangler secret put DISCORD_PUBLIC_KEY
+npx wrangler secret put DISCORD_BOT_TOKEN
+npx wrangler secret put GEMINI_API_KEY
 ```
 
 ## アーキテクチャ
 
-### コア構造
+### 技術スタック
+- **Runtime**: Cloudflare Workers (JavaScript)
+- **Database**: Cloudflare D1 (SQLite)
+- **AI**: Google Gemini API (gemini-1.5-flash)
+- **Bot Framework**: Discord Interactions API
 
-- `main.py`: エントリーポイント
-- `src/bot.py`: Discord botのメインロジック
-  - `DiscordBot`クラス: commands.Botを継承
-  - Gemini APIとの統合
-  - メモ機能の実装（create/read/delete）
+### 主要コンポーネント
 
-### デプロイ構成
+#### worker/index.js
+- Discord Webhook処理
+- Slash Commands実装 (`/chat`, `/memo`, `/list`, `/delete`)
+- メッセージ履歴取得（Discord API）
+- ニックネーム対応
+- Gemini API連携
 
-- **Cloudflare Workers** (`worker/index.js`): Discord webhookの処理
-- **KV Namespace**: メモデータの永続化
-- `wrangler.toml`: Cloudflare Workers設定
+#### worker/system-prompt.js
+- システムプロンプト管理
+- ゴリ本部長のキャラクター設定
+- カスタムプロンプト読み込み
 
-### 主要機能
+#### config/system-prompt.txt
+- ゴリ本部長の詳細な設定
+- 口癖・行動指針
+- 編集してキャラクター変更可能
 
-1. **メンション応答**: 過去10件のメッセージをコンテキストとして使用
-2. **メモ管理**: 
-   - 保存: "memo", "メモ", "remember", "覚えて"
-   - 削除: "forget", "忘れて", "delete", "削除"  
-   - 一覧: "list", "一覧", "show", "見せて"
+## 主要機能
 
-## セキュリティ
+1. **Slash Commands**
+   - `/chat [メッセージ]` - AIと会話
+   - `/memo [内容]` - メモ保存
+   - `/list` - メモ一覧表示
+   - `/delete [ID]` - メモ削除
 
-- `.env`ファイルで機密情報を管理（`.gitignore`に含める）
-- 本番環境ではwrangler secretsを使用
-- Discord webhookの署名検証を実装予定
+2. **会話機能**
+   - 過去10件のメッセージ履歴を参照
+   - ユーザーのニックネーム認識
+   - ゴリ本部長のキャラクターで応答
+
+3. **データ永続化**
+   - D1データベースでユーザーごとのメモ管理
+   - user_idで分離
+
+## 環境変数
+
+必須:
+- `DISCORD_APPLICATION_ID` - Discord アプリケーションID
+- `DISCORD_PUBLIC_KEY` - Discord 公開鍵
+- `DISCORD_BOT_TOKEN` - Discord Botトークン
+- `GEMINI_API_KEY` - Gemini API キー
+
+## デプロイ手順
+
+1. 環境変数設定 (`.env`ファイル作成)
+2. `npx wrangler secret put`で各シークレット設定
+3. `npx wrangler deploy`でデプロイ
+4. Discord Developer PortalでInteraction Endpoint URL設定
+5. `node scripts/setup-commands.js`でコマンド登録
+
+## キャラクターカスタマイズ
+
+`config/system-prompt.txt`を編集後:
+1. `worker/system-prompt.js`の`SYSTEM_PROMPT_TEXT`を更新
+2. `npx wrangler deploy`で反映
 
 ## 注意事項
 
-- Gemini APIは無料枠を使用
-- メモ機能は現在メモリ内保存（本番ではKV Namespaceを使用）
-- Discord botトークンとGemini APIキーは`.env`ファイルに設定が必要
+- Python版は削除済み（Beta版で不安定のため）
+- JavaScript版が安定稼働中
+- MESSAGE CONTENT INTENTの有効化必須（Discord Developer Portal）
