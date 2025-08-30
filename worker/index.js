@@ -10,7 +10,7 @@ export default {
 
     // Discord Webhook endpoint
     if (url.pathname === '/discord' && request.method === 'POST') {
-      return handleDiscordWebhook(request, env);
+      return handleDiscordWebhook(request, env, ctx);
     }
 
     // Health check endpoint
@@ -65,7 +65,7 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-async function handleDiscordWebhook(request, env) {
+async function handleDiscordWebhook(request, env, ctx) {
   try {
     // Verify Discord signature
     const isValid = await verifyDiscordRequest(request, env);
@@ -85,7 +85,7 @@ async function handleDiscordWebhook(request, env) {
 
     // Handle application commands
     if (body.type === 2) {
-      return handleCommand(body, env);
+      return handleCommand(body, env, ctx);
     }
 
     // Handle message components (buttons, select menus)
@@ -100,7 +100,7 @@ async function handleDiscordWebhook(request, env) {
   }
 }
 
-async function handleCommand(interaction, env) {
+async function handleCommand(interaction, env, ctx) {
   const { data, member, user } = interaction;
   const userId = member?.user?.id || user?.id;
   const command = data.name.toLowerCase();
@@ -115,7 +115,7 @@ async function handleCommand(interaction, env) {
         return handleDeleteCommand(data.options, userId, env);
       case 'gori':
       case 'ゴリ':
-        return handleGoriCommand(data.options, interaction, env);
+        return handleGoriCommand(data.options, interaction, env, ctx);
       default:
         return createResponse('不明なコマンドです。');
     }
@@ -206,28 +206,84 @@ function createResponse(content, ephemeral = false) {
 }
 
 // ゴリ本部長との会話を処理
-async function handleGoriCommand(options, interaction, env) {
+async function handleGoriCommand(options, interaction, env, ctx) {
   const message = options?.find(opt => opt.name === 'message')?.value;
 
   if (!message) {
     return createResponse('なんか言えや。知らんけど。');
   }
 
-  // チャンネルIDとギルドIDを取得
-  const channelId = interaction.channel_id || interaction.channel?.id;
-  const guildId = interaction.guild_id;
+  // Discordの3秒タイムアウトを回避するため、まず「考え中」のレスポンスを返す
+  // DeferredChannelMessageWithSource (type 5) を使用
+  const deferredResponse = new Response(JSON.stringify({
+    type: 5, // DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+    data: {
+      flags: 0
+    }
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
 
-  // 直近のメッセージ履歴を取得（ギルドIDも渡す）
-  const messageHistory = await fetchRecentMessages(channelId, guildId, env);
+  // 非同期で実際の処理を行い、後でフォローアップメッセージを送信
+  const interactionToken = interaction.token;
+  const applicationId = interaction.application_id;
 
-  // 現在のユーザーのニックネームを取得
-  const currentUserNickname = interaction.member?.nick || interaction.member?.user?.username || interaction.user?.username || 'User';
+  // バックグラウンドで処理を継続
+  ctx.waitUntil(
+    processGoriResponse(message, interaction, env, interactionToken, applicationId)
+  );
 
-  // コンテキストを含めてAIに送信
-  const contextPrompt = await buildContextPrompt(messageHistory, message, currentUserNickname, env);
-  const aiResponse = await generateAIResponse(contextPrompt, env);
+  return deferredResponse;
+}
 
-  return createResponse(aiResponse);
+// 実際のAI応答処理（バックグラウンド）
+async function processGoriResponse(message, interaction, env, interactionToken, applicationId) {
+  try {
+    // チャンネルIDとギルドIDを取得
+    const channelId = interaction.channel_id || interaction.channel?.id;
+    const guildId = interaction.guild_id;
+
+    // 直近のメッセージ履歴を取得（ギルドIDも渡す）
+    const messageHistory = await fetchRecentMessages(channelId, guildId, env);
+
+    // 現在のユーザーのニックネームを取得
+    const currentUserNickname = interaction.member?.nick || interaction.member?.user?.username || interaction.user?.username || 'User';
+
+    // コンテキストを含めてAIに送信
+    const contextPrompt = await buildContextPrompt(messageHistory, message, currentUserNickname, env);
+    const aiResponse = await generateAIResponse(contextPrompt, env);
+
+    // フォローアップメッセージを送信
+    await sendFollowupMessage(applicationId, interactionToken, aiResponse, env);
+  } catch (error) {
+    console.error('Error processing Gori response:', error);
+    await sendFollowupMessage(applicationId, interactionToken, 'うわっなんかエラー出たわ。もう一回やって。吐きそう。', env);
+  }
+}
+
+// フォローアップメッセージを送信
+async function sendFollowupMessage(applicationId, interactionToken, content, env) {
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Failed to send followup message:', response.status, errorText);
+    }
+  } catch (error) {
+    console.error('Error sending followup message:', error);
+  }
 }
 
 // Discord APIから直近のメッセージを取得（ニックネーム対応）
@@ -328,14 +384,14 @@ async function buildContextPrompt(messageHistory, currentMessage, currentUserNic
 }
 
 // Gemini models in priority order (best to worst)
+// Note: 一部のモデルはプレビュー版のため利用できない可能性があります
 const GEMINI_MODELS = [
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
-  'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
-  'gemini-1.5-pro',
-  'gemini-1.5-flash',
+  'gemini-2.0-flash-exp',  // 実験版2.0
+  'gemini-1.5-pro',        // 安定版Pro（非推奨だが動作する）
+  'gemini-1.5-flash',      // 安定版Flash（非推奨だが動作する）
+  'gemini-1.5-flash-8b',   // 安定版軽量（非推奨だが動作する）
 ];
 
 // Gemini API integration with fallback for rate limits
@@ -388,11 +444,15 @@ async function generateAIResponse(prompt, env) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Gemini API error for model ${model}:`, errorText);
+        console.error(`Gemini API error for model ${model}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
 
-        // Check if it's a rate limit error (429) or quota exceeded
-        if (response.status === 429 || errorText.includes('quota') || errorText.includes('rate')) {
-          lastError = `Model ${model} rate limited`;
+        // Check if it's a rate limit error (429), quota exceeded, or model not found (404/400)
+        if (response.status === 429 || response.status === 404 || response.status === 400 || errorText.includes('quota') || errorText.includes('rate') || errorText.includes('not found') || errorText.includes('does not exist')) {
+          lastError = `Model ${model}: ${response.status} - ${errorText.substring(0, 100)}`;
           continue; // Try next model
         }
 
