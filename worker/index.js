@@ -2,7 +2,7 @@
  * Cloudflare Worker for Discord Bot with D1 Database
  */
 
-import { getSystemPrompt } from './system-prompt.js';
+import { getSystemPrompt, getGodGoriSystemPrompt } from './system-prompt.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -113,6 +113,11 @@ async function handleCommand(interaction, env, ctx) {
         return handleListCommand(userId, env);
       case 'delete':
         return handleDeleteCommand(data.options, userId, env);
+      case 'godgori':
+      case 'god':
+      case 'ゴッドゴリ':
+      case '神':
+        return handleGodGoriCommand(data.options, interaction, env, ctx);
       case 'gori':
       case 'ゴリ':
         return handleGoriCommand(data.options, interaction, env, ctx);
@@ -236,6 +241,50 @@ async function handleGoriCommand(options, interaction, env, ctx) {
   return deferredResponse;
 }
 
+// ゴッドゴリとの会話を処理
+async function handleGodGoriCommand(options, interaction, env, ctx) {
+  const message = options?.find(opt => opt.name === 'message')?.value;
+
+  if (!message) {
+    return createResponse('神託を求めるなら、まず何か言いなさい。');
+  }
+
+  const deferredResponse = new Response(JSON.stringify({
+    type: 5,
+    data: { flags: 0 }
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  const interactionToken = interaction.token;
+  const applicationId = interaction.application_id;
+
+  ctx.waitUntil(
+    processGodGoriResponse(message, interaction, env, interactionToken, applicationId)
+  );
+
+  return deferredResponse;
+}
+
+// GodGori のAI応答処理（バックグラウンド）
+async function processGodGoriResponse(message, interaction, env, interactionToken, applicationId) {
+  try {
+    const channelId = interaction.channel_id || interaction.channel?.id;
+    const guildId = interaction.guild_id;
+
+    const messageHistory = await fetchRecentMessages(channelId, guildId, env);
+    const currentUserNickname = interaction.member?.nick || interaction.member?.user?.username || interaction.user?.username || 'User';
+
+    const contextPrompt = await buildContextPromptGodgori(messageHistory, message, currentUserNickname, env);
+    const aiResponse = await generateAIResponse(contextPrompt, env);
+
+    await sendFollowupMessage(applicationId, interactionToken, aiResponse, env);
+  } catch (error) {
+    console.error('Error processing GodGori response:', error);
+    await sendFollowupMessage(applicationId, interactionToken, '神託に乱れが生じた。もう一度試しなさい。', env);
+  }
+}
+
 // 実際のAI応答処理（バックグラウンド）
 async function processGoriResponse(message, interaction, env, interactionToken, applicationId) {
   try {
@@ -311,7 +360,7 @@ async function fetchRecentMessages(channelId, guildId, env) {
 
     const messages = await response.json();
     console.log(`Successfully fetched ${messages.length} messages from Discord`);
-    
+
     // メッセージ内容をログ出力
     messages.forEach((msg, index) => {
       const author = msg.author?.username || 'Unknown';
@@ -375,7 +424,7 @@ async function buildContextPrompt(messageHistory, currentMessage, currentUserNic
   }
 
   console.log(`Building context with ${messageHistory.length} messages from history`);
-  
+
   let context = `${systemPrompt}\n\n【直近の会話履歴（古い順）】\n`;
   context += '================================\n';
 
@@ -396,6 +445,31 @@ async function buildContextPrompt(messageHistory, currentMessage, currentUserNic
 
   console.log(`Built context with ${messageHistory.length} historical messages, total length: ${context.length} chars`);
   console.log('First 500 chars of context:', context.substring(0, 500));
+
+  return context;
+}
+
+// GodGori 用のコンテキストプロンプトを構築
+async function buildContextPromptGodgori(messageHistory, currentMessage, currentUserNickname, env) {
+  const systemPrompt = await getGodGoriSystemPrompt(env);
+
+  if (!messageHistory || messageHistory.length === 0) {
+    return `${systemPrompt}\n\n【現在の会話】\n${currentUserNickname}: ${currentMessage}\n\nゴッドゴリの神託:`;
+  }
+
+  let context = `${systemPrompt}\n\n【直近の会話履歴（古い順）】\n`;
+  context += '================================\n';
+
+  for (const msg of messageHistory) {
+    const author = msg.author?.bot ? 'ゴッドゴリ' : (msg.author?.nickname || msg.author?.username || 'User');
+    const content = msg.content;
+    if (content) {
+      context += `${author}: ${content}\n`;
+    }
+  }
+
+  context += '================================\n\n';
+  context += `【現在の会話】\n${currentUserNickname}: ${currentMessage}\n\nゴッドゴリの神託:`;
 
   return context;
 }

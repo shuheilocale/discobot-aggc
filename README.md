@@ -16,8 +16,8 @@ Cloudflare WorkersとGemini APIを使用したDiscord Bot。面倒くさがり�
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/your-username/discobot-aggt.git
-cd discobot-aggt
+git clone https://github.com/your-username/dicobot-aggc.git
+cd dicobot-aggc
 
 # 依存関係インストール
 npm install
@@ -81,6 +81,7 @@ https://your-worker-name.workers.dev/discord
 ## コマンド
 
 - `/gori [メッセージ]` - ゴリ本部長と会話
+- `/godgori [メッセージ]` - ゴッドゴリと会話
 - `/memo [内容]` - メモを保存
 - `/list` - メモ一覧表示
 - `/delete [ID]` - メモ削除

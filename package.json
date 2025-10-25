@@ -1,4 +1,5 @@
 {
+  "name": "dicobot-aggc",
   "dependencies": {
     "dotenv": "^17.2.1"
   }

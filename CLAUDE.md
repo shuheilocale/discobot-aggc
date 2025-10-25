@@ -9,7 +9,7 @@ Discord Bot with Cloudflare Workers - ゴリ本部長として振る舞うAIチ�
 ## ディレクトリ構成
 
 ```
-discobot-aggt/
+dicobot-aggc/
 ├── worker/                 # Cloudflare Worker (JavaScript)
 │   ├── index.js           # メインロジック
 │   └── system-prompt.js   # システムプロンプト設定

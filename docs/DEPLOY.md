@@ -17,8 +17,8 @@
 #### 1.1 リポジトリのクローン
 
 ```bash
-git clone https://github.com/your-username/discobot-aggt.git
-cd discobot-aggt
+git clone https://github.com/your-username/dicobot-aggc.git
+cd dicobot-aggc
 ```
 
 #### 1.2 依存関係のインストール
@@ -139,8 +139,8 @@ npx wrangler deploy
 
 成功すると、WorkerのURLが表示されます：
 ```
-Published discobot-aggt (x.xx sec)
-  https://discobot-aggt.YOUR_SUBDOMAIN.workers.dev
+Published dicobot-aggc (x.xx sec)
+  https://dicobot-aggc.YOUR_SUBDOMAIN.workers.dev
 ```
 
 #### 6.2 Discord Interaction Endpoint設定
@@ -150,7 +150,7 @@ Published discobot-aggt (x.xx sec)
 3. 「General Information」ページ
 4. 「INTERACTIONS ENDPOINT URL」に以下を入力：
    ```
-   https://discobot-aggt.YOUR_SUBDOMAIN.workers.dev/discord
+   https://dicobot-aggc.YOUR_SUBDOMAIN.workers.dev/discord
    ```
 5. 「Save Changes」をクリック（自動的に検証される）
 
@@ -162,6 +162,7 @@ node scripts/setup-commands.js
 
 成功すると、以下のコマンドが登録されます：
 - `/gori [メッセージ]` - ゴリ本部長と会話
+- `/godgori [メッセージ]` - ゴッドゴリと会話
 - `/memo [内容]` - メモを保存
 - `/list` - メモ一覧表示
 - `/delete [ID]` - メモ削除
@@ -195,6 +196,7 @@ Discordサーバーで以下を試す：
 1. **Slashコマンドテスト**
    ```
    /gori こんにちは
+   /godgori こんにちは
    ```
 
 3. **メモ機能テスト**
@@ -248,7 +250,7 @@ npx wrangler d1 execute discobot-memos --command="SELECT * FROM chat_history ORD
 #### 1. 「AIレスポンスの生成に失敗しました」
 
 **原因**: Gemini API Keyが正しく設定されていない
-**解決**: 
+**解決**:
 ```bash
 npx wrangler secret put GEMINI_API_KEY
 ```
@@ -256,7 +258,7 @@ npx wrangler secret put GEMINI_API_KEY
 #### 2. 「メッセージ履歴の取得に失敗しました」
 
 **原因**: Bot TokenまたはMESSAGE CONTENT INTENTが有効でない
-**解決**: 
+**解決**:
 - Discord Developer PortalでMESSAGE CONTENT INTENTを有効化
 - Bot Tokenを再設定
 
